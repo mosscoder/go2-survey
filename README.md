@@ -147,6 +147,7 @@ mpg-ai-edge/
 │   └── archive/           # retired scripts and historical logs
 ├── docs/
 │   ├── install.md         # end-to-end install + first-run walkthrough
+│   ├── field-walkthrough.md  # operator procedure for a line survey (June 2026 campaign)
 │   ├── gps/               # u-blox ZED-F9R reference PDFs + config notes
 │   ├── webrtc/            # unitree_webrtc_connect protocol notes
 │   └── jetson_orin_nano/  # Jetson hardware/OS setup + ML stack notes
