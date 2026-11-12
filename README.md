@@ -11,7 +11,7 @@ The software collected the ground images of the
 dataset. Tag `v0.36.0` marks the version of the last survey run in that
 dataset.
 
-## What it does
+## Features
 
 - **Line surveys.** The robot walks straight legs between corner waypoints,
   turns in place at each corner, and takes a photograph at a fixed interval of
