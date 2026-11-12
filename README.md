@@ -1,10 +1,10 @@
-<img src="go2_survey_logo.png" alt="logo" width="691">
+![logo](go2_survey_logo.png)
 
 # go2-survey
 
-go2-survey walks a Unitree Go2 quadruped robot along surveyed routes under RTK
+go2-survey walks a Unitree Go2 quadruped robot along surveyed routes using an RTK
 GPS and photographs the ground ahead as it goes. Every photograph is saved with
-the robot's position, to centimeter accuracy, and its bearing at the shutter.
+the robot's position, to centimeter accuracy, and its bearing at the time of capture.
 
 The software collected the ground images of the
 [MPG Ranch Multimodal Survey](https://github.com/mosscoder/multimodal_survey)
@@ -14,19 +14,19 @@ dataset.
 ## Features
 
 - **Line surveys.** The robot walks straight legs between corner waypoints,
-  turns in place at each corner, and takes a photograph at a fixed interval of
-  travel.
+turns in place at each corner, and takes a photograph at a fixed interval of
+travel.
 - **Route planning.** `make-waypoints` lays out the legs of a lawnmower route
-  from a polygon or a point and draws a preview of it.
+from a polygon or a point and draws a preview of it.
 - **Geotagging.** Each photograph gets a JSON sidecar and an EXIF header with
-  its RTK position, reported accuracy, capture time and bearing. Bearings are
-  computed from the RTK track after the run.
+its RTK position, reported accuracy, capture time and bearing. Bearings are
+computed from the RTK track after the run.
 - **Waypoint navigation.** A mission without a capture strategy walks the robot
-  from point to point.
+from point to point.
 - **Resuming.** `run --resume` continues an interrupted survey from its last
-  photograph, into the same run folder.
+photograph, into the same run folder.
 - **Monitoring.** A run pauses when the GPS fix degrades or the corrections go
-  stale, and logs battery state and motor temperatures throughout.
+stale, and logs battery state and motor temperatures throughout.
 
 It runs on a companion computer on the robot (we used an NVIDIA Jetson Orin
 Nano) with a u-blox ZED-F9P or ZED-F9R receiver and an NTRIP correction
@@ -137,7 +137,7 @@ cp -r dev/missions/_template dev/missions/mission_NAME
 go2-survey run mission_NAME --dry-run
 ```
 
-## What a run writes
+## Run outputs
 
 Each run gets its own folder, `<mission>/runs/<name>_<timestamp>/`, or
 `<output_dir>/<mission>/<name>_<timestamp>/` when the mission sets
@@ -151,7 +151,7 @@ Each run gets its own folder, `<mission>/runs/<name>_<timestamp>/`, or
 | `battery.log`, `motor.log` | Battery state and motor temperatures |
 | `captures/` | One JPEG per photograph and a JSON sidecar beside it |
 
-## Layout
+## Project Layout
 
 ```
 go2-survey/
