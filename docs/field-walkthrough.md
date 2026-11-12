@@ -22,8 +22,8 @@ git add missions/site_1/strip_3/runs/ && git commit -m "site_1/strip_3 run $(dat
 ```
 
 These commands work from any directory — no need to `cd` into either repo
-except to push. You only touch the `mpg-ai-edge` (go2-survey) checkout
-during one-time setup, or when Kyle announces a software update.
+except to push. You only touch the go2-survey checkout (the folder
+`mpg-ai-edge` on the Jetson) during one-time setup, or when Kyle announces a software update.
 
 ## One-time setup (per datastick)
 
@@ -42,9 +42,9 @@ during one-time setup, or when Kyle announces a software update.
    ```
 
 3. Make sure the `go2-survey` software on the Jetson is current — it needs
-   the **`refactor` branch of `mpg-ai-edge`, v0.29.0 or later** (the
+   the **`refactor` branch of go2-survey, v0.29.0 or later** (the
    self-calibrating line-survey walk this mission uses). In the Jetson's
-   `mpg-ai-edge` checkout:
+   go2-survey checkout (the folder `mpg-ai-edge`):
 
    ```
    git fetch && git checkout refactor && git pull

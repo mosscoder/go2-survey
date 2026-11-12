@@ -125,13 +125,13 @@ JetPack 6.2 ships cuDNN 9, but older NVIDIA wheels expect cuDNN 8. Try:
 pip install torch torchvision --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
 ```
 
-## mpg-ai-edge Repo Setup
+## go2-survey Repo Setup
 
-**GitHub:** [mosscoder/mpg-ai-edge](https://github.com/mosscoder/mpg-ai-edge)
+**GitHub:** [mosscoder/go2-survey](https://github.com/mosscoder/go2-survey), formerly mpg-ai-edge
 
 ```bash
 mkdir -p ~/dev
-git clone https://github.com/mosscoder/mpg-ai-edge.git ~/dev/mpg-ai-edge
+git clone https://github.com/mosscoder/go2-survey.git ~/dev/mpg-ai-edge
 ```
 
 ### Why `environment-jetson.yml` Doesn't Work on JetPack 6.2

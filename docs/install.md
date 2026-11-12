@@ -1,4 +1,4 @@
-# Installing go2_survey
+# Installing go2-survey
 
 End-to-end setup for the `go2-survey` CLI and its first mission run.
 
@@ -13,8 +13,8 @@ End-to-end setup for the `go2-survey` CLI and its first mission run.
 ## Install the package
 
 ```bash
-git clone <this-repo> mpg-ai-edge
-cd mpg-ai-edge
+git clone https://github.com/mosscoder/go2-survey.git
+cd go2-survey
 pip install -e .
 ```
 
@@ -52,9 +52,9 @@ go2-survey run /absolute/path/to/my_survey_dir     # or by an arbitrary path
 go2-survey run 00_parking_lot -v                   # with debug logging
 ```
 
-Logs stream to the console and to
-`<mission>/logs/<name>_<timestamp>.log` (where `<name>` comes from the
-mission.toml `name` field), alongside the mission config.
+Each run writes its logs and photographs to its own folder,
+`<mission>/runs/<name>_<timestamp>/`, and the narrative also streams to the
+console. The README lists the files of a run.
 
 ## Configuring a mission
 
@@ -68,9 +68,9 @@ baud = 38400
 [ntrip]
 host       = "caster.emlid.com"
 port       = 2101
-mountpoint = "MP15774"
-username   = "u47193"
-password   = "x9kqbw"
+mountpoints = ["MOUNTPOINT"]   # parallel lists, tried in order
+usernames   = ["USERNAME"]
+passwords   = ["PASSWORD"]
 
 [robot]
 connection_mode = "LocalSTA"
@@ -138,7 +138,8 @@ or higher (4 = GNSS+DR, 5 = RTK Float, 6 = RTK Fixed).
 
 ## CLI reference
 
-`go2-survey` exposes three subcommands. All are invoked through the installed
+This section describes `run`, `list` and `discover-ip`. The README lists the
+other commands (`make-waypoints`, `plot-waypoints`, `finalize-bearings`). All are invoked through the installed
 entry point — there are no per-mission shell wrappers.
 
 ### `go2-survey run <mission> [flags]`
@@ -168,9 +169,8 @@ waypoints through the `calibrate → turn → walk` state machine.
 - `--capture-images` — placeholder. Parses cleanly and prints a warning;
   no-op until the `src/go2_survey/vision/frames.py` hook lands.
 
-Logs always go to both the console and
-`<mission>/logs/<name>_<timestamp>.log`, where `<name>` comes from the
-`name` field of `mission.toml`.
+Logs always go to both the console and the run folder,
+`<mission>/runs/<name>_<timestamp>/`.
 
 ### `go2-survey list`
 

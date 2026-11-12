@@ -1,99 +1,121 @@
 <img src="go2_survey_logo.png" alt="logo" width="691">
 
-# go2_survey
+# go2-survey
 
-Autonomous waypoint navigation for the **Unitree Go2** over **RTK GPS**. The
-goal of the project is to develop a field-deployable surveying platform: the
-robot walks itself between GPS waypoints at centimeter accuracy so downstream
-sensing (cameras, environmental probes) can operate with precise geotagging.
+go2-survey walks a Unitree Go2 quadruped robot along surveyed routes under RTK
+GPS and photographs the ground ahead as it goes. Every photograph is saved with
+the robot's position, to centimeter accuracy, and its bearing at the shutter.
 
-The navigation stack is built from five moving parts, each behind its own
-module under `src/go2_survey/`:
+The software collected the ground images of the
+[MPG Ranch Multimodal Survey](https://github.com/mosscoder/multimodal_survey)
+dataset. Tag `v0.36.0` marks the version of the last survey run in that
+dataset.
 
-- **GPS** — u-blox ZED-F9P/F9R over UBX (`gps.py`)
-- **NTRIP** — Emlid caster client that forwards RTCM corrections (`ntrip.py`)
-- **Robot** — Go2 WebRTC connection + sport-state IMU + motion commands (`robot.py`)
-- **Navigator** — three-phase state machine: calibrate IMU → turn → walk (`navigator.py`)
-- **Mission runner** — loads a mission folder, runs it, calls hooks (`mission_runner.py`)
+## What it does
 
-A single `go2-survey` CLI drives everything. Missions are **data**, not code:
-each mission is a folder containing a `mission.toml` and a `waypoints.geojson`.
-Run any mission with `go2-survey run <name|path>` — by name
-(`go2-survey run 00_parking_lot`) if the folder lives under `dev/missions/`, or
-by path (`go2-survey run /any/directory/with/a/mission.toml`) if it doesn't.
+- **Line surveys.** The robot walks straight legs between corner waypoints,
+  turns in place at each corner, and takes a photograph at a fixed interval of
+  travel.
+- **Route planning.** `make-waypoints` lays out the legs of a lawnmower route
+  from a polygon or a point and draws a preview of it.
+- **Geotagging.** Each photograph gets a JSON sidecar and an EXIF header with
+  its RTK position, reported accuracy, capture time and bearing. Bearings are
+  computed from the RTK track after the run.
+- **Waypoint navigation.** A mission without a capture strategy walks the robot
+  from point to point.
+- **Resuming.** `run --resume` continues an interrupted survey from its last
+  photograph, into the same run folder.
+- **Monitoring.** A run pauses when the GPS fix degrades or the corrections go
+  stale, and logs battery state and motor temperatures throughout.
+
+It runs on a companion computer on the robot (we used an NVIDIA Jetson Orin
+Nano) with a u-blox ZED-F9P or ZED-F9R receiver and an NTRIP correction
+service.
 
 ## Quick start
 
 ```bash
-pip install -e .                          # installs go2-survey + deps
-go2-survey list                           # 00_parking_lot, 01_tennis_court
-go2-survey run 00_parking_lot --dry-run   # load config + waypoints, skip hardware
-go2-survey run 00_parking_lot             # live navigation (parking lot circuit)
-go2-survey discover-ip                    # find the Go2's IP on the local network
+pip install -e .                          # installs go2-survey and its dependencies
+go2-survey list                           # the missions under dev/missions/
+go2-survey run 00_parking_lot --dry-run   # load the configuration and waypoints, skip hardware
+go2-survey run 00_parking_lot             # walk the mission
 ```
 
-Full walkthrough — including GPS wiring, NTRIP credentials, robot discovery,
-and troubleshooting — lives in [`docs/install.md`](docs/install.md).
+[`docs/install.md`](docs/install.md) covers installation, configuration,
+robot discovery and troubleshooting.
+[`docs/field-walkthrough.md`](docs/field-walkthrough.md) is the operator
+procedure for a line survey in the field.
 
-## Creating a new mission
+## Commands
 
-```bash
-cp -r dev/missions/_template dev/missions/mission_NAME
-# edit dev/missions/mission_NAME/mission.toml (name, description)
-# replace dev/missions/mission_NAME/waypoints.geojson with your FeatureCollection
-go2-survey run mission_NAME
-```
+| Command | What it does |
+|---|---|
+| `go2-survey run <mission>` | Runs a mission, given by name under `dev/missions/` or by the path of any folder with a `mission.toml` |
+| `go2-survey run <mission> --dry-run` | Loads the configuration and waypoints and logs the plan without touching hardware |
+| `go2-survey run --resume <run_dir>` | Resumes an interrupted line survey from the last photograph of that run |
+| `go2-survey list` | Lists the missions under `dev/missions/` |
+| `go2-survey discover-ip` | Finds the robot's address on the local network |
+| `go2-survey make-waypoints <file> --leg-space-m <m> --epsg <code>` | Generates the corner waypoints of a lawnmower route from a polygon or a point (GeoJSON or KML), and a preview image |
+| `go2-survey plot-waypoints <waypoints.geojson>` | Draws `mission_layout.png` for a waypoint file |
+| `go2-survey finalize-bearings <run_dir>` | Recomputes the bearing of every photograph in a run from the RTK track. A line survey does this itself when it ends |
 
-## Anatomy of a mission
+`go2-survey <command> --help` lists every option.
 
-A mission is a directory containing exactly two files. The folder name is
-your choice; the file names are load-bearing.
+## A mission
+
+A mission is a folder with two files. `mission.toml` specifies the robot
+survey details, and `waypoints.geojson` gives the route.
 
 ### `mission.toml`
 
-TOML config. Two top-level fields plus four sections:
+| Section | What it sets |
+|---|---|
+| Top level | `name`, `description`, `mode` (`nav` for a survey, or one of the static camera, static geotag and probe tests), and `output_dir` |
+| `[gps]` | Serial port and baud rate of the receiver |
+| `[ntrip]` | Host and port of the correction service, and its `mountpoints`, `usernames` and `passwords` as parallel lists tried in order. `on_unavailable` chooses between continuing without corrections and aborting |
+| `[robot]` | Connection mode, and optionally the robot's address or serial number |
+| `[navigation]` | Speed, turn rate, arrival tolerance, and the limits on GPS quality that pause a run (fix type, horizontal accuracy, age of corrections) |
+| `[capture]` | The capture `strategy` (`none`, `frame_only`, `waypoint_forward` or `line_survey`), the interval between photographs, and how the robot steers along a leg |
+| `[probe]` | Duration and sample rate of the GPS probe test |
+
+A line survey like those of the dataset looks like this.
 
 ```toml
-name        = "00_parking_lot"                   # used as log filename prefix
-description = "Parking lot two-waypoint circuit" # human-readable
-
-[gps]
-port = "/dev/ttyACM0"     # USB serial port for the SparkFun ZED-F9P/F9R
-baud = 38400
+name        = "site_1_strip_1"
+description = "Lawnmower line survey of site 1, strip 1"
+mode        = "nav"
 
 [ntrip]
-host       = "caster.emlid.com"
-port       = 2101
-mountpoint = "MP15774"
-username   = "u47193"
-password   = "x9kqbw"
-
-[robot]
-connection_mode = "LocalSTA"    # or "LocalAP" for the robot's own hotspot
-# ip     = "192.168.1.105"      # optional; omit to auto-discover
-# serial = "..."                # optional alternative to ip
+host        = "caster.emlid.com"
+port        = 2101
+mountpoints = ["MOUNTPOINT"]
+usernames   = ["USERNAME"]
+passwords   = ["PASSWORD"]
 
 [navigation]
-arrival_tolerance = 0.5    # m     — stop when within this distance of a waypoint
-max_velocity      = 0.5    # m/s   — forward speed cap
-rotation_rate     = 0.8    # rad/s — angular speed during turns
-min_fix_type      = 4      # 4=GNSS+DR, 5=RTK Float, 6=RTK Fixed
-max_hacc          = 0.10   # m     — pause nav if horizontal accuracy degrades above this
-gps_fix_timeout   = 300    # s     — max wait for initial fix
+max_velocity   = 1.0             # m/s
+max_hacc       = 0.10            # m, pause when horizontal accuracy is worse than this
+max_rtcm_age_s = 12.0            # s, pause when corrections are older than this
+
+[capture]
+strategy           = "line_survey"
+capture_interval_m = 1.0            # one photograph per meter of travel
+leg_steering       = "cross_track"  # follow the leg line on the GPS course
 ```
 
-Every field is optional except `name`; unset fields fall back to the
-dataclass defaults in `src/go2_survey/config.py`. Any field can also be
-overridden at run time by an environment variable (`GPS_PORT`,
-`EMLID_USERNAME`, `ROBOT_IP`, ...). Precedence:
-**defaults → mission.toml → env var**.
+Every field except `name` is optional. Unset fields take the defaults in
+`src/go2_survey/config.py`, and `dev/missions/_template/mission.toml` documents
+each one. An environment variable overrides the file (`GPS_PORT`,
+`EMLID_USERNAMES`, `ROBOT_IP`, `GO2_SURVEY_OUTPUT_DIR` and others), so the
+order of precedence is defaults, then `mission.toml`, then the environment.
 
 ### `waypoints.geojson`
 
-Standard GeoJSON `FeatureCollection` of `Point` features. Coordinates are
-`[longitude, latitude]` per the GeoJSON spec (not the reverse). A
-`properties.name` field on each feature is optional but recommended —
-it shows up in log lines as each waypoint is reached.
+A GeoJSON `FeatureCollection` of `Point` features, with coordinates as
+`[longitude, latitude]`. For a line survey the points are the corners of the
+legs, in walking order, which is what `make-waypoints` writes. A
+`properties.name` on each feature is optional and appears in the log as the
+robot reaches it.
 
 ```json
 {
@@ -101,72 +123,67 @@ it shows up in log lines as each waypoint is reached.
   "features": [
     {
       "type": "Feature",
-      "properties": { "name": "waypoint_1" },
+      "properties": { "name": "wp_001" },
       "geometry": { "type": "Point", "coordinates": [-113.99780057, 46.86164631] }
     }
   ]
 }
 ```
 
-`MultiPoint` geometries are also accepted — each inner coordinate becomes
-its own `Waypoint` with a `_0`, `_1`, … suffix.
+To start a new mission, copy the template and edit the two files.
 
-### What happens at runtime
+```bash
+cp -r dev/missions/_template dev/missions/mission_NAME
+go2-survey run mission_NAME --dry-run
+```
 
-`go2-survey run <mission>` loads `mission.toml`, applies env-var overrides,
-and hands the resulting settings to `GPSManager`, `Go2Robot`, and
-`WaypointNavigator`. It then loads `waypoints.geojson`, iterates the
-waypoints in file order, and drives the robot through each one using the
-three-phase state machine: **calibrate IMU → turn to heading → walk**.
+## What a run writes
 
-Logs are written to `<mission>/logs/<name>_<timestamp>.log` alongside the
-config, so every run's history co-locates with the mission that produced it.
+Each run gets its own folder, `<mission>/runs/<name>_<timestamp>/`, or
+`<output_dir>/<mission>/<name>_<timestamp>/` when the mission sets
+`output_dir`.
 
-By default the log is a human-readable narrative — phase banners, GPS fix
-status, waypoint arrivals, capture events. The 20 Hz `rt/lf/sportmodestate`
-IMU/velocity/foot stream that the Go2 emits over its WebRTC data channel is
-suppressed so it doesn't drown out the narrative; the one field we actually
-consume (`imu_state`) is cached in `Go2Robot._on_sport_state` regardless.
-Run with `-v`/`--verbose` to keep the full firehose — useful when debugging
-IMU calibration, data channel state, or library internals.
+| File | Contents |
+|---|---|
+| `main.log` | The narrative of the run, also printed to the console |
+| `gps.log` | GPS and RTK telemetry once a second, one JSON object per line |
+| `imu.log` | The robot's state stream |
+| `battery.log`, `motor.log` | Battery state and motor temperatures |
+| `captures/` | One JPEG per photograph and a JSON sidecar beside it |
 
 ## Layout
 
 ```
 go2-survey/
-├── src/go2_survey/        # the installable package (ntrip, gps, robot,
-│   │                      #   navigator, waypoints, geometry, config,
-│   │                      #   mission_runner, cli, discovery, logging_utils)
-│   └── vision/            # TODO: frame capture + geotagging
+├── src/go2_survey/          the installable package
+│   ├── cli.py, mission_runner.py, config.py        commands, the mission loop, settings
+│   ├── logging_utils.py                            log formatting
+│   ├── gps.py, ntrip.py                            receiver and corrections
+│   ├── robot.py, discovery.py                      robot connection
+│   ├── navigator.py, geometry.py                   steering
+│   ├── waypoints.py, waypoint_gen.py               loading and generating routes
+│   ├── capture.py, vision/                         photographs and geotagging
+│   ├── bearings.py, resume.py                      bearings after a run, resuming a run
+│   └── battery.py, motors.py, health.py, probes.py monitoring and diagnostics
 ├── dev/
-│   ├── missions/          # one folder per mission (data-driven)
-│   │   ├── _template/
-│   │   ├── 00_parking_lot/  # parking lot circuit (2 waypoints, tuned settings)
-│   │   └── 01_tennis_court/ # tennis court circuit (2 waypoints, tuned settings)
-│   ├── changelog.md       # dated log of what changed and why
-│   └── archive/           # retired scripts and historical logs
+│   ├── missions/            test missions and the template
+│   ├── changelog.md         dated log of every version
+│   ├── scripts/             one-off maintenance scripts
+│   └── archive/             retired scripts, missions and logs
 ├── docs/
-│   ├── install.md         # end-to-end install + first-run walkthrough
-│   ├── field-walkthrough.md  # operator procedure for a line survey (June 2026 campaign)
-│   ├── gps/               # u-blox ZED-F9R reference PDFs + config notes
-│   ├── webrtc/            # unitree_webrtc_connect protocol notes
-│   └── jetson_orin_nano/  # Jetson hardware/OS setup + ML stack notes
-├── pyproject.toml         # single source of truth for deps + entry point
-└── README.md
+│   ├── install.md           installation and first run
+│   ├── field-walkthrough.md operator procedure for a line survey
+│   ├── gps/                 receiver reference documents and configuration notes
+│   ├── webrtc/              notes on the robot's WebRTC protocol
+│   └── jetson_orin_nano/    companion computer setup
+└── pyproject.toml           dependencies and the entry point
 ```
-
-## Roadmap
-
-- **Frame capture** — pull still images from the Go2's WebRTC video track at
-  each waypoint (`src/go2_survey/vision/frames.py`, currently a TODO)
-- **Geotagging** — stamp captured frames with RTK position + calibrated heading
-  for downstream inference pipelines (`vision/geotag.py`, also TODO)
 
 ## Project history
 
-See [`dev/changelog.md`](dev/changelog.md) for the full dated log of changes,
-including the bugs and fixes that produced the first successful autonomous
-two-waypoint run on 2026-04-01.
+[`dev/changelog.md`](dev/changelog.md) is the dated log of every change, from
+the first autonomous two-waypoint run on 2026-04-01 to version 0.36.0 on
+2026-06-18.
 
 ## License
 

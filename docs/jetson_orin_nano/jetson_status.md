@@ -22,7 +22,7 @@
 | TensorRT 10.3.0 | ✅ | System install via `--system-site-packages` |
 | YOLO inference | ✅ | YOLOv8n: 187ms, CUDA:0 confirmed |
 | DINOv2 inference | ✅ | 768-dim features on CUDA, `00_jetson_offline_inference.py` |
-| mpg-ai-edge repo | ✅ | Cloned to `~/dev/mpg-ai-edge` |
+| go2-survey repo | ✅ | Cloned to `~/dev/mpg-ai-edge` (the repository's former name) |
 
 ## Quick Start
 
@@ -35,11 +35,11 @@ python3 -c "import torch; print(f'PyTorch {torch.__version__}, CUDA: {torch.cuda
 
 ## Repo
 
-**mpg-ai-edge:** [mosscoder/mpg-ai-edge](https://github.com/mosscoder/mpg-ai-edge)
+**go2-survey:** [mosscoder/go2-survey](https://github.com/mosscoder/go2-survey), formerly mpg-ai-edge
 
 ```bash
 mkdir -p ~/dev
-git clone https://github.com/mosscoder/mpg-ai-edge.git ~/dev/mpg-ai-edge
+git clone https://github.com/mosscoder/go2-survey.git ~/dev/mpg-ai-edge
 ```
 
 ## History
