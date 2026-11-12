@@ -133,7 +133,7 @@ IMU calibration, data channel state, or library internals.
 ## Layout
 
 ```
-mpg-ai-edge/
+go2-survey/
 ├── src/go2_survey/        # the installable package (ntrip, gps, robot,
 │   │                      #   navigator, waypoints, geometry, config,
 │   │                      #   mission_runner, cli, discovery, logging_utils)
@@ -167,3 +167,7 @@ mpg-ai-edge/
 See [`dev/changelog.md`](dev/changelog.md) for the full dated log of changes,
 including the bugs and fixes that produced the first successful autonomous
 two-waypoint run on 2026-04-01.
+
+## License
+
+MIT, see [`LICENSE`](LICENSE).
